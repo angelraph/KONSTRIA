@@ -1,0 +1,23 @@
+{
+  "name": "@konstria/scraper-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "start": "tsx src/scheduler.ts"
+  },
+  "dependencies": {
+    "@konstria/db": "workspace:*",
+    "@konstria/shared-types": "workspace:*",
+    "cheerio": "^1.0.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

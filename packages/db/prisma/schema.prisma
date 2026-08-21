@@ -1,0 +1,471 @@
+// KONSTRIA data model.
+// See C:\Users\Admin\.claude\plans\here-is-what-i-lucky-flame.md for the
+// design rationale — in particular: PriceRecord/BOQLineItem always carry a
+// source + timestamp (never an unlabeled number), and BOQSnapshot is
+// immutable once generated (regenerating creates a new version, never
+// mutates history).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------- Tenancy ----------
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users            User[]
+  projects         Project[]
+  labourRates      LabourRate[]
+  rateOverrides    UserRateOverride[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  clerkUserId    String   @unique
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  email          String   @unique
+  name           String?
+  role           OrgRole  @default(MEMBER)
+  createdAt      DateTime @default(now())
+
+  ownedProjects     Project[]          @relation("ProjectOwner")
+  rateOverrides     UserRateOverride[]
+  extractionReviews ExtractionReviewLog[]
+  boqSnapshots      BOQSnapshot[]
+
+  @@index([organizationId])
+}
+
+// ---------- Project & structured takeoff ----------
+
+enum TakeoffStatus {
+  DRAFT
+  REVIEWED
+  LOCKED
+}
+
+enum TakeoffInputMethod {
+  MANUAL
+  PDF_EXTRACTED
+  HYBRID
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  ownerUserId    String
+  owner          User     @relation("ProjectOwner", fields: [ownerUserId], references: [id])
+  name           String
+  region         String   // e.g. "Lagos", "FCT", "Rivers" — generic, not NG-hardcoded
+  country        String   @default("NG")
+  currency       String   @default("NGN")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  takeoffModels    TakeoffModel[]
+  floorPlanUploads FloorPlanUpload[]
+  boqSnapshots     BOQSnapshot[]
+  rateOverrides    UserRateOverride[]
+
+  @@index([organizationId])
+}
+
+model TakeoffModel {
+  id          String             @id @default(cuid())
+  projectId   String
+  project     Project            @relation(fields: [projectId], references: [id])
+  version     Int                @default(1)
+  inputMethod TakeoffInputMethod
+  status      TakeoffStatus      @default(DRAFT)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  levels             Level[]
+  concreteElements   StructuralElement[]
+  roofPlanes         RoofPlane[]
+  extractionJobs     ExtractionJob[]
+  boqSnapshots       BOQSnapshot[]
+
+  @@index([projectId])
+}
+
+model Level {
+  id             String       @id @default(cuid())
+  takeoffModelId String
+  takeoffModel   TakeoffModel @relation(fields: [takeoffModelId], references: [id])
+  name           String
+  floorHeightM   Float
+  order          Int
+
+  rooms  Room[]
+  walls  Wall[]
+
+  @@index([takeoffModelId])
+}
+
+enum RoomType {
+  WET
+  DRY
+}
+
+model Room {
+  id       String   @id @default(cuid())
+  levelId  String
+  level    Level    @relation(fields: [levelId], references: [id])
+  name     String
+  areaM2   Float
+  roomType RoomType
+
+  wallsAsRoomA Wall[] @relation("RoomA")
+  wallsAsRoomB Wall[] @relation("RoomB")
+
+  @@index([levelId])
+}
+
+enum BlockType {
+  BLOCK_225MM
+  BLOCK_150MM
+}
+
+model Wall {
+  id           String    @id @default(cuid())
+  levelId      String
+  level        Level     @relation(fields: [levelId], references: [id])
+  roomAId      String?
+  roomA        Room?     @relation("RoomA", fields: [roomAId], references: [id])
+  roomBId      String?
+  roomB        Room?     @relation("RoomB", fields: [roomBId], references: [id])
+  lengthM      Float
+  heightM      Float
+  thicknessMm  Int
+  blockType    BlockType
+  mortarRatioCement Int  @default(1)
+  mortarRatioSand   Int  @default(6)
+  // Plan-space coordinates, populated only when this wall came from PDF
+  // extraction; null for purely manual entry.
+  startPointX  Float?
+  startPointY  Float?
+  endPointX    Float?
+  endPointY    Float?
+
+  openings Opening[]
+
+  @@index([levelId])
+}
+
+enum OpeningType {
+  DOOR
+  WINDOW
+}
+
+model Opening {
+  id       String      @id @default(cuid())
+  wallId   String
+  wall     Wall        @relation(fields: [wallId], references: [id])
+  type     OpeningType
+  widthM   Float
+  heightM  Float
+  quantity Int         @default(1)
+
+  @@index([wallId])
+}
+
+enum StructuralStage {
+  SUBSTRUCTURE
+  SUPERSTRUCTURE
+}
+
+model StructuralElement {
+  id             String          @id @default(cuid())
+  takeoffModelId String
+  takeoffModel   TakeoffModel    @relation(fields: [takeoffModelId], references: [id])
+  stage          StructuralStage
+  description    String
+  volumeM3       Float
+  mixRatioCement Int
+  mixRatioSand   Int
+  mixRatioGranite Int?
+
+  rebarSchedules RebarSchedule[]
+
+  @@index([takeoffModelId])
+}
+
+model RebarSchedule {
+  id                  String            @id @default(cuid())
+  structuralElementId String
+  structuralElement   StructuralElement @relation(fields: [structuralElementId], references: [id])
+  diameterMm          Float
+  lengthM             Float
+  quantity            Int
+
+  @@index([structuralElementId])
+}
+
+enum RoofSheetType {
+  LONG_SPAN_ALUMINIUM
+  CORRUGATED_STANDARD
+}
+
+model RoofPlane {
+  id             String        @id @default(cuid())
+  takeoffModelId String
+  takeoffModel   TakeoffModel  @relation(fields: [takeoffModelId], references: [id])
+  areaM2         Float
+  sheetType      RoofSheetType
+  sheetLengthM   Float
+
+  @@index([takeoffModelId])
+}
+
+// ---------- PDF/floor-plan extraction ----------
+
+enum ExtractionStatus {
+  PENDING
+  PROCESSING
+  NEEDS_REVIEW
+  REVIEWED
+  FAILED
+}
+
+model FloorPlanUpload {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  fileUrl    String
+  fileType   String
+  pageCount  Int      @default(1)
+  uploadedAt DateTime @default(now())
+
+  extractionJobs ExtractionJob[]
+
+  @@index([projectId])
+}
+
+model ExtractionJob {
+  id                String            @id @default(cuid())
+  floorPlanUploadId String
+  floorPlanUpload   FloorPlanUpload   @relation(fields: [floorPlanUploadId], references: [id])
+  takeoffModelId    String?
+  takeoffModel      TakeoffModel?     @relation(fields: [takeoffModelId], references: [id])
+  status            ExtractionStatus  @default(PENDING)
+  aiModelUsed       String
+  rawAiOutput       Json?
+  scaleCalibration  Json?             // { pointAPx, pointBPx, realWorldLengthM }
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  reviewLogs ExtractionReviewLog[]
+
+  @@index([floorPlanUploadId])
+}
+
+model ExtractionReviewLog {
+  id              String        @id @default(cuid())
+  extractionJobId String
+  extractionJob   ExtractionJob @relation(fields: [extractionJobId], references: [id])
+  fieldChanged    String
+  originalValue   Json?
+  correctedValue  Json?
+  reviewedById    String
+  reviewedBy      User          @relation(fields: [reviewedById], references: [id])
+  reviewedAt      DateTime      @default(now())
+
+  @@index([extractionJobId])
+}
+
+// ---------- Rules engine versioning ----------
+
+model RuleEngineVersion {
+  id          String   @id @default(cuid())
+  versionTag  String   @unique
+  releasedAt  DateTime @default(now())
+  changelog   String?
+
+  boqSnapshots BOQSnapshot[]
+}
+
+// ---------- Pricing ----------
+
+model MaterialCanonical {
+  id       String   @id @default(cuid())
+  code     String   @unique // e.g. CEMENT_50KG_BAG, SHARP_SAND, GRANITE, REBAR_12MM
+  name     String
+  unit     String
+  category String
+  aliases  String[] // raw listing text fragments that resolve to this material
+
+  priceRecords     PriceRecord[]
+  rateOverrides    UserRateOverride[]
+  boqLineItems     BOQLineItem[]
+}
+
+enum PriceSourceType {
+  MARKETPLACE
+  SUPPLIER_SITE
+  NEWS_AGGREGATOR
+  MANUAL_ADMIN_ENTRY
+}
+
+enum PriceTier {
+  A // official supplier/announcement
+  B // marketplace listing
+  C // news/blog roundup
+}
+
+model PriceSource {
+  id           String          @id @default(cuid())
+  name         String          @unique
+  baseUrl      String
+  type         PriceSourceType
+  tier         PriceTier
+  scrapeConfig Json?
+  isActive     Boolean         @default(true)
+
+  priceRecords PriceRecord[]
+  scrapeRuns   ScrapeRun[]
+}
+
+model ScrapeRun {
+  id            String      @id @default(cuid())
+  priceSourceId String
+  priceSource   PriceSource @relation(fields: [priceSourceId], references: [id])
+  startedAt     DateTime    @default(now())
+  finishedAt    DateTime?
+  status        String      // running | success | failed
+  recordsFound  Int         @default(0)
+  recordsMatched Int        @default(0)
+  errorMessage  String?
+
+  @@index([priceSourceId])
+}
+
+model PriceRecord {
+  id                  String            @id @default(cuid())
+  materialCanonicalId String
+  materialCanonical   MaterialCanonical @relation(fields: [materialCanonicalId], references: [id])
+  priceSourceId       String
+  priceSource         PriceSource       @relation(fields: [priceSourceId], references: [id])
+  amount              Float
+  currency            String            @default("NGN")
+  unit                String
+  region              String
+  country             String            @default("NG")
+  sourceUrl           String
+  capturedAt          DateTime
+  confidenceTier      PriceTier
+  isOutlier           Boolean           @default(false)
+  rawListingText      String?
+  createdAt           DateTime          @default(now())
+
+  @@index([materialCanonicalId, region])
+  @@index([priceSourceId])
+}
+
+model UserRateOverride {
+  id                  String            @id @default(cuid())
+  userId              String
+  user                User              @relation(fields: [userId], references: [id])
+  organizationId      String
+  organization        Organization      @relation(fields: [organizationId], references: [id])
+  materialCanonicalId String
+  materialCanonical   MaterialCanonical @relation(fields: [materialCanonicalId], references: [id])
+  projectId           String?           // null = applies to all of this user's projects
+  project             Project?          @relation(fields: [projectId], references: [id])
+  amount              Float
+  unit                String
+  note                String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([userId, materialCanonicalId])
+  @@index([projectId, materialCanonicalId])
+}
+
+model LabourRate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  trade          String
+  unit           String
+  amount         Float
+  region         String
+  note           String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, trade, region])
+}
+
+// ---------- Frozen BOQ output ----------
+
+enum BOQSnapshotStatus {
+  DRAFT
+  FINAL
+}
+
+model BOQSnapshot {
+  id                  String            @id @default(cuid())
+  projectId           String
+  project             Project           @relation(fields: [projectId], references: [id])
+  takeoffModelId      String
+  takeoffModel        TakeoffModel      @relation(fields: [takeoffModelId], references: [id])
+  version             Int               @default(1)
+  status              BOQSnapshotStatus @default(DRAFT)
+  generatedAt         DateTime          @default(now())
+  generatedById       String
+  generatedBy         User              @relation(fields: [generatedById], references: [id])
+  ruleEngineVersionId String
+  ruleEngineVersion   RuleEngineVersion @relation(fields: [ruleEngineVersionId], references: [id])
+  currency            String            @default("NGN")
+
+  lineItems BOQLineItem[]
+
+  @@index([projectId])
+}
+
+enum BOQLineRateSourceType {
+  PRICE_RECORD
+  USER_OVERRIDE
+  MISSING
+}
+
+model BOQLineItem {
+  id                  String                @id @default(cuid())
+  boqSnapshotId       String
+  boqSnapshot         BOQSnapshot           @relation(fields: [boqSnapshotId], references: [id])
+  materialCanonicalId String?
+  materialCanonical   MaterialCanonical?    @relation(fields: [materialCanonicalId], references: [id])
+  stage               String
+  description         String
+  quantity            Float
+  unit                String
+  // Copied at generation time — never a live reference — so a snapshot
+  // never silently changes when prices update later.
+  unitRate            Float?
+  unitRateSourceType  BOQLineRateSourceType
+  unitRateSourceId    String?
+  provenanceLabel     String
+  asOfDate            DateTime?
+  amount              Float?
+  traceabilityRefs    Json // [{ entityType, entityId }]
+
+  @@index([boqSnapshotId])
+}

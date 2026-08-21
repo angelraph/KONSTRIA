@@ -1,0 +1,34 @@
+{
+  "name": "@konstria/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.8.0",
+    "@konstria/db": "workspace:*",
+    "@konstria/excel-export": "workspace:*",
+    "@konstria/rules-engine": "workspace:*",
+    "@konstria/shared-types": "workspace:*",
+    "next": "16.3.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "svix": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.2",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^2.1.4"
+  }
+}
