@@ -3,32 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@konstria/db";
-import { ensureAccount } from "../../../lib/ensureAccount.js";
 import { persistSnapshot } from "../../../lib/boq/persistSnapshot.js";
-
-async function requireProjectAccess(projectId: string) {
-  const user = await ensureAccount();
-  const project = await prisma.project.findFirstOrThrow({
-    where: { id: projectId, organizationId: user.organizationId },
-  });
-  return { user, project };
-}
-
-async function getOrCreateTakeoffModel(projectId: string) {
-  const existing = await prisma.takeoffModel.findFirst({
-    where: { projectId },
-    orderBy: { version: "desc" },
-  });
-  if (existing) return existing;
-
-  return prisma.takeoffModel.create({
-    data: {
-      projectId,
-      inputMethod: "MANUAL",
-      status: "DRAFT",
-    },
-  });
-}
+import { requireProjectAccess } from "../../../lib/requireProjectAccess.js";
+import { getOrCreateTakeoffModel } from "../../../lib/getOrCreateTakeoffModel.js";
 
 export async function addLevel(projectId: string, formData: FormData) {
   await requireProjectAccess(projectId);

@@ -15,10 +15,13 @@
     "@konstria/excel-export": "workspace:*",
     "@konstria/rules-engine": "workspace:*",
     "@konstria/shared-types": "workspace:*",
+    "@vercel/blob": "^2.8.0",
     "next": "16.3.2",
+    "openai": "^7.5.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "svix": "^2.0.0"
+    "svix": "^2.0.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -27,7 +30,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^2.1.4"
   }

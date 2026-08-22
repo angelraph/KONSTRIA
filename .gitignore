@@ -9,3 +9,6 @@ build/
 .DS_Store
 .turbo/
 coverage/
+
+.vercel
+.env*

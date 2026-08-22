@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@konstria/db";
 import { ensureAccount } from "../../../../../lib/ensureAccount.js";
+import AppHeader from "../../../../../components/AppHeader.js";
 
 function formatNaira(amount: number | null): string {
   if (amount === null) return "-";
@@ -33,7 +34,9 @@ export default async function BOQPage({
   const hasMissingPrices = snapshot.lineItems.some((item) => item.unitRateSourceType === "MISSING" && item.materialCanonicalId);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12">
+    <>
+      <AppHeader />
+      <div className="mx-auto max-w-4xl px-6 py-12">
       <Link href={`/projects/${projectId}`} className="text-sm text-zinc-500 hover:underline">
         ← {project.name}
       </Link>
@@ -91,6 +94,7 @@ export default async function BOQPage({
       <div className="mt-8 flex justify-end border-t border-zinc-200 pt-4 dark:border-zinc-800">
         <span className="text-lg font-semibold">Grand total: {formatNaira(grandTotal)}</span>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

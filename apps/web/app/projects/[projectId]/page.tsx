@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@konstria/db";
 import { ensureAccount } from "../../../lib/ensureAccount.js";
+import AppHeader from "../../../components/AppHeader.js";
 import {
   addConcreteElement,
   addLevel,
@@ -39,12 +40,24 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[proj
   const walls = takeoff?.levels.flatMap((l) => l.walls) ?? [];
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12">
+    <>
+      <AppHeader />
+      <div className="mx-auto max-w-4xl px-6 py-12">
       <Link href="/dashboard" className="text-sm text-zinc-500 hover:underline">
         ← Projects
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold">{project.name}</h1>
-      <p className="text-sm text-zinc-500">{project.region} · {project.currency}</p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold">{project.name}</h1>
+          <p className="text-sm text-zinc-500">{project.region} · {project.currency}</p>
+        </div>
+        <Link
+          href={`/projects/${projectId}/upload`}
+          className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
+        >
+          Upload a floor plan
+        </Link>
+      </div>
 
       {takeoff && (
         <div className="mt-4 flex flex-wrap items-center gap-4 rounded border border-zinc-200 p-4 dark:border-zinc-800">
@@ -344,6 +357,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[proj
           </button>
         </form>
       </section>
-    </div>
+      </div>
+    </>
   );
 }
