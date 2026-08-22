@@ -26,7 +26,6 @@ async function getOrCreateTakeoffModel(projectId: string) {
       projectId,
       inputMethod: "MANUAL",
       status: "DRAFT",
-      levels: { create: [{ name: "Ground Floor", floorHeightM: 3, order: 0 }] },
     },
   });
 }
