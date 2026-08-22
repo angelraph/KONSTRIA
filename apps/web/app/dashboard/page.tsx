@@ -42,9 +42,9 @@ export default async function DashboardPage() {
           <ul className="mt-6 divide-y divide-zinc-200 dark:divide-zinc-800">
             {rest.map((project) => (
               <li key={project.id} className="py-3">
-                <Link href={`/projects/${project.id}`} className="flex items-center justify-between hover:underline">
+                <Link href={`/projects/${project.id}`} className="flex w-full items-center justify-between gap-4 hover:underline">
                   <span>{project.name}</span>
-                  <span className="text-sm text-zinc-500">
+                  <span className="shrink-0 text-sm text-zinc-500">
                     {project.region} · updated {formatDate(project.updatedAt)}
                   </span>
                 </Link>
