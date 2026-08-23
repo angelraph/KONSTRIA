@@ -45,7 +45,7 @@ describe("generateSnapshot", () => {
       status: "MISSING_PRICE",
       amount: null,
       unit: "NO",
-      provenanceLabel: "Missing — needs input",
+      provenanceLabel: "Missing, needs input",
     });
 
     const result = await generateSnapshot(model, resolvePrice);
@@ -94,7 +94,7 @@ describe("generateSnapshot", () => {
       status: "MISSING_PRICE",
       amount: null,
       unit: "NO",
-      provenanceLabel: "Missing — needs input",
+      provenanceLabel: "Missing, needs input",
     }));
     expect(result.ruleEngineVersion).toBeTruthy();
   });

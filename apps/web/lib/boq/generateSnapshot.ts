@@ -54,7 +54,7 @@ export async function generateSnapshot(
         unit: item.unit,
         unitRate: null,
         unitRateSourceType: "MISSING",
-        provenanceLabel: "Quantity reference — no direct material cost",
+        provenanceLabel: "Quantity reference, no direct material cost",
         asOfDate: null,
         amount: null,
         traceabilityRefs: item.sourceRefs,

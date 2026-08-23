@@ -15,7 +15,7 @@ function daysAgo(date: Date): number {
 
 function formatProvenance(sourceName: string, capturedAt: Date, stale: boolean): string {
   const dateStr = capturedAt.toISOString().slice(0, 10);
-  return stale ? `Stale — last seen ${dateStr} (${sourceName})` : `${sourceName}, as of ${dateStr}`;
+  return stale ? `Stale, last seen ${dateStr} (${sourceName})` : `${sourceName}, as of ${dateStr}`;
 }
 
 export interface ResolvePriceContext {
@@ -84,7 +84,7 @@ export async function resolvePrice(ctx: ResolvePriceContext): Promise<ResolvedPr
       status: "MISSING_PRICE",
       amount: null,
       unit: "",
-      provenanceLabel: "Missing — needs input",
+      provenanceLabel: "Missing, needs input",
     };
   }
 

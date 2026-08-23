@@ -25,7 +25,7 @@ export async function persistSnapshot(takeoffModelId: string, generatedByUserId:
         status: "MISSING_PRICE",
         amount: null,
         unit: "",
-        provenanceLabel: "Missing — needs input",
+        provenanceLabel: "Missing, needs input",
       };
     }
     return resolvePrice({

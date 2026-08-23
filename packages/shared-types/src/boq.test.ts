@@ -33,7 +33,7 @@ describe("groupByStage", () => {
       generatedAt: new Date().toISOString(),
       ruleEngineVersion: "1.0.0",
       lineItems: [
-        { stage: "FINISHES", description: "Paint", quantity: 5, unit: "LITRE", unitRate: null, provenanceLabel: "Missing — needs input", asOfDate: null, amount: null },
+        { stage: "FINISHES", description: "Paint", quantity: 5, unit: "LITRE", unitRate: null, provenanceLabel: "Missing, needs input", asOfDate: null, amount: null },
       ],
     };
     const grouped = groupByStage(snapshot);
