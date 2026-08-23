@@ -107,3 +107,11 @@ export const PAINT_COVERAGE_M2_PER_LITRE = 10;
 // Standard door/window frame section: linear metres of frame per opening
 // perimeter (2*(w+h) + allowance for jamb overlap at floor/wall).
 export const FRAME_ALLOWANCE_M = 0.15;
+
+// Typical Nigerian residential opening heights, used as an editable default
+// when height can't be read off a plan view (a 2D floor plan never shows
+// vertical height, for manual entry or AI-extracted openings alike).
+export const STANDARD_OPENING_HEIGHT_M: Record<"DOOR" | "WINDOW", number> = {
+  DOOR: 2.1,
+  WINDOW: 1.2,
+};

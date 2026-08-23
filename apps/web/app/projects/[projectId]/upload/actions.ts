@@ -6,6 +6,7 @@ import { requireProjectAccess } from "../../../../lib/requireProjectAccess.js";
 import { getOrCreateTakeoffModel } from "../../../../lib/getOrCreateTakeoffModel.js";
 import { uploadPlanImage } from "../../../../lib/blob/uploadPlan.js";
 import { extractPlan } from "../../../../lib/extraction/openaiExtract.js";
+import { STANDARD_OPENING_HEIGHT_M } from "@konstria/rules-engine";
 
 export interface ExtractionDraftWall {
   tempId: string;
@@ -15,12 +16,15 @@ export interface ExtractionDraftWall {
 export interface ExtractionDraftRoom {
   tempId: string;
   text: string;
+  areaM2: number;
 }
 
 export interface ExtractionDraftOpening {
   tempId: string;
   wallTempId: string;
   type: "DOOR" | "WINDOW";
+  widthM: number;
+  suggestedHeightM: number;
 }
 
 export interface ExtractionDraft {
@@ -37,9 +41,12 @@ export interface ExtractionDraft {
  * Uploads the plan image, runs the real OpenAI vision extraction, and
  * returns a draft for the review screen. Nothing here becomes part of the
  * takeoff yet — that only happens once the user reviews and confirms via
- * commitExtraction. Wall lengths are derived from the user's own scale
- * calibration (two clicked points + a real distance they typed), never from
- * the AI's own guess at real-world units.
+ * commitExtraction. Wall lengths, room areas, and opening widths are all
+ * derived from the user's own scale calibration (two clicked points + a real
+ * distance they typed) applied to the AI's pixel geometry, never from the
+ * AI's own guess at real-world units. Opening height is never on a plan
+ * view (a 2D floor plan has no vertical dimension), so it stays a documented
+ * default (STANDARD_OPENING_HEIGHT_M) the reviewer must confirm or correct.
  */
 export async function extractFromUpload(projectId: string, formData: FormData): Promise<ExtractionDraft> {
   await requireProjectAccess(projectId);
@@ -93,12 +100,26 @@ export async function extractFromUpload(projectId: string, formData: FormData): 
         (Math.hypot(w.endXPx - w.startXPx, w.endYPx - w.startYPx) / pxPerMetre).toFixed(2)
       ),
     })),
-    roomLabels: extraction.roomLabels.map((r) => ({ tempId: r.tempId, text: r.text })),
-    openings: extraction.openings.map((o) => ({
-      tempId: o.tempId,
-      wallTempId: o.wallTempId,
-      type: o.type,
-    })),
+    roomLabels: extraction.roomLabels.map((r) => {
+      const widthPx = Math.abs(r.bottomRightXPx - r.topLeftXPx);
+      const depthPx = Math.abs(r.bottomRightYPx - r.topLeftYPx);
+      const areaM2 = (widthPx / pxPerMetre) * (depthPx / pxPerMetre);
+      return {
+        tempId: r.tempId,
+        text: r.text,
+        areaM2: Number.isFinite(areaM2) ? Number(areaM2.toFixed(1)) : 0,
+      };
+    }),
+    openings: extraction.openings.map((o) => {
+      const widthM = Math.hypot(o.endXPx - o.startXPx, o.endYPx - o.startYPx) / pxPerMetre;
+      return {
+        tempId: o.tempId,
+        wallTempId: o.wallTempId,
+        type: o.type,
+        widthM: Number.isFinite(widthM) ? Number(widthM.toFixed(2)) : 0,
+        suggestedHeightM: STANDARD_OPENING_HEIGHT_M[o.type],
+      };
+    }),
     dimensionTexts: extraction.dimensionTexts.map((d) => d.text),
     extractionNotes: extraction.extractionNotes,
   };

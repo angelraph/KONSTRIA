@@ -75,9 +75,15 @@ export default function PlanUploadWizard({ projectId }: { projectId: string }) {
       setReviewWalls(
         result.walls.map((w) => ({ tempId: w.tempId, lengthM: w.lengthM, heightM: Number(floorHeightM), blockType: "BLOCK_225MM" as const }))
       );
-      setReviewRooms(result.roomLabels.map((r) => ({ name: r.text, areaM2: 0, roomType: "DRY" as const })));
+      setReviewRooms(result.roomLabels.map((r) => ({ name: r.text, areaM2: r.areaM2, roomType: "DRY" as const })));
       setReviewOpenings(
-        result.openings.map((o) => ({ wallTempId: o.wallTempId, type: o.type, widthM: 0, heightM: 0, quantity: 1 }))
+        result.openings.map((o) => ({
+          wallTempId: o.wallTempId,
+          type: o.type,
+          widthM: o.widthM,
+          heightM: o.suggestedHeightM,
+          quantity: 1,
+        }))
       );
       setStep("review");
     } catch (err) {
@@ -200,8 +206,10 @@ export default function PlanUploadWizard({ projectId }: { projectId: string }) {
       {step === "review" && draft && (
         <div>
           <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-            Review every value below before saving. The AI read wall positions and text from the image,
-            but heights, block types, room areas, and opening sizes always need your confirmation.
+            Review every value below before saving. Wall lengths, room areas, and opening widths are
+            calculated from your scale calibration, and opening heights use a standard default, but
+            every number here is a starting point, not a final answer. Check each one against the
+            drawing and correct anything that looks off before confirming.
           </p>
 
           {draft.extractionNotes && (
@@ -294,7 +302,7 @@ export default function PlanUploadWizard({ projectId }: { projectId: string }) {
                   />
                 </label>
                 <label className="flex flex-col text-xs text-zinc-500">
-                  Area (m²), measured from the plan (not auto-detected)
+                  Area (m²), estimated from the plan, check and correct
                   <input
                     type="number"
                     step="0.1"
@@ -329,7 +337,7 @@ export default function PlanUploadWizard({ projectId }: { projectId: string }) {
           {reviewOpenings.length > 0 && (
             <>
               <h3 className="mt-6 font-medium">
-                Possible openings ({reviewOpenings.length} flagged, enter size to keep or leave blank to skip)
+                Possible openings ({reviewOpenings.length} flagged, sizes estimated, check and correct or clear to skip)
               </h3>
               <div className="mt-2 space-y-2">
                 {reviewOpenings.map((opening, i) => (
