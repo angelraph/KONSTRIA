@@ -30,6 +30,9 @@ export async function addRoom(projectId: string, formData: FormData) {
   const roomType = String(formData.get("roomType") ?? "DRY") as "WET" | "DRY";
   if (!levelId || !name || !(areaM2 > 0)) throw new Error("Room name, level, and a positive area are required");
 
+  const level = await prisma.level.findFirst({ where: { id: levelId, takeoffModel: { projectId } } });
+  if (!level) throw new Error("Level not found in this project");
+
   await prisma.room.create({ data: { levelId, name, areaM2, roomType } });
   revalidatePath(`/projects/${projectId}`);
 }
@@ -44,6 +47,9 @@ export async function addWall(projectId: string, formData: FormData) {
   if (!levelId || !(lengthM > 0) || !(heightM > 0)) {
     throw new Error("Wall level, length, and height are required");
   }
+
+  const level = await prisma.level.findFirst({ where: { id: levelId, takeoffModel: { projectId } } });
+  if (!level) throw new Error("Level not found in this project");
 
   await prisma.wall.create({
     data: { levelId, lengthM, heightM, blockType, thicknessMm },
@@ -61,6 +67,9 @@ export async function addOpening(projectId: string, formData: FormData) {
   if (!wallId || !(widthM > 0) || !(heightM > 0) || !(quantity > 0)) {
     throw new Error("Opening wall, width, height, and quantity are required");
   }
+
+  const wall = await prisma.wall.findFirst({ where: { id: wallId, level: { takeoffModel: { projectId } } } });
+  if (!wall) throw new Error("Wall not found in this project");
 
   await prisma.opening.create({ data: { wallId, type, widthM, heightM, quantity } });
   revalidatePath(`/projects/${projectId}`);
@@ -105,6 +114,11 @@ export async function addRebarSchedule(projectId: string, formData: FormData) {
   if (!structuralElementId || !(diameterMm > 0) || !(lengthM > 0) || !(quantity > 0)) {
     throw new Error("Rebar element, diameter, length, and quantity are required");
   }
+
+  const element = await prisma.structuralElement.findFirst({
+    where: { id: structuralElementId, takeoffModel: { projectId } },
+  });
+  if (!element) throw new Error("Structural element not found in this project");
 
   await prisma.rebarSchedule.create({ data: { structuralElementId, diameterMm, lengthM, quantity } });
   revalidatePath(`/projects/${projectId}`);
