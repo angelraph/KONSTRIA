@@ -8,7 +8,12 @@ export default function AppHeader() {
         <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
           KONSTRIA
         </Link>
-        <UserButton />
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-sm text-zinc-500 hover:underline">
+            How it works
+          </Link>
+          <UserButton />
+        </div>
       </div>
     </header>
   );
