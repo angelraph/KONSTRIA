@@ -6,6 +6,7 @@ import {
   extractFromUpload,
   type ExtractionDraft,
   type ReviewedOpening,
+  type ReviewedRoof,
   type ReviewedRoom,
   type ReviewedWall,
 } from "./actions.js";
@@ -31,6 +32,11 @@ export default function PlanUploadWizard({ projectId }: { projectId: string }) {
   const [reviewWalls, setReviewWalls] = useState<(ReviewedWall & { tempId: string })[]>([]);
   const [reviewRooms, setReviewRooms] = useState<ReviewedRoom[]>([]);
   const [reviewOpenings, setReviewOpenings] = useState<ReviewedOpening[]>([]);
+  const [reviewRoof, setReviewRoof] = useState<ReviewedRoof>({
+    areaM2: 0,
+    sheetType: "LONG_SPAN_ALUMINIUM",
+    sheetLengthM: 3.6,
+  });
   const imgRef = useRef<HTMLImageElement>(null);
 
   function handleFileSelect(f: File) {
@@ -85,6 +91,11 @@ export default function PlanUploadWizard({ projectId }: { projectId: string }) {
           quantity: 1,
         }))
       );
+      setReviewRoof({
+        areaM2: result.suggestedRoofAreaM2,
+        sheetType: "LONG_SPAN_ALUMINIUM",
+        sheetLengthM: 3.6,
+      });
       setStep("review");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Extraction failed");
@@ -103,7 +114,8 @@ export default function PlanUploadWizard({ projectId }: { projectId: string }) {
         Number(floorHeightM),
         reviewWalls,
         reviewRooms,
-        reviewOpenings.filter((o) => o.widthM > 0 && o.heightM > 0)
+        reviewOpenings.filter((o) => o.widthM > 0 && o.heightM > 0),
+        reviewRoof.areaM2 > 0 ? reviewRoof : null
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save. Please try again");
@@ -376,6 +388,48 @@ export default function PlanUploadWizard({ projectId }: { projectId: string }) {
               </div>
             </>
           )}
+
+          <h3 className="mt-6 font-medium">Roof</h3>
+          <p className="text-xs text-zinc-500">
+            Area is estimated from the wall footprint plus a standard eave overhang, not read off the
+            plan (roof shape isn&apos;t visible on a floor plan). Sheet length is a common stocked
+            default. Both need your confirmation, or clear the area to skip roofing entirely.
+          </p>
+          <div className="mt-2 flex flex-wrap items-end gap-2 rounded border border-zinc-200 p-2 dark:border-zinc-800">
+            <label className="flex flex-col text-xs text-zinc-500">
+              Area (m²)
+              <input
+                type="number"
+                step="0.1"
+                value={reviewRoof.areaM2 || ""}
+                onChange={(e) => setReviewRoof({ ...reviewRoof, areaM2: Number(e.target.value) })}
+                className="w-28 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </label>
+            <label className="flex flex-col text-xs text-zinc-500">
+              Sheet type
+              <select
+                value={reviewRoof.sheetType}
+                onChange={(e) =>
+                  setReviewRoof({ ...reviewRoof, sheetType: e.target.value as "LONG_SPAN_ALUMINIUM" | "CORRUGATED_STANDARD" })
+                }
+                className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <option value="LONG_SPAN_ALUMINIUM">Long-span aluminium</option>
+                <option value="CORRUGATED_STANDARD">Corrugated standard</option>
+              </select>
+            </label>
+            <label className="flex flex-col text-xs text-zinc-500">
+              Sheet length (m)
+              <input
+                type="number"
+                step="0.1"
+                value={reviewRoof.sheetLengthM || ""}
+                onChange={(e) => setReviewRoof({ ...reviewRoof, sheetLengthM: Number(e.target.value) })}
+                className="w-24 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </label>
+          </div>
 
           {draft.dimensionTexts.length > 0 && (
             <p className="mt-6 text-xs text-zinc-500">

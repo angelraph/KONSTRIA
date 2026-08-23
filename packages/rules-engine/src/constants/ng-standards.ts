@@ -115,3 +115,14 @@ export const STANDARD_OPENING_HEIGHT_M: Record<"DOOR" | "WINDOW", number> = {
   DOOR: 2.1,
   WINDOW: 1.2,
 };
+
+// Typical Nigerian residential eave overhang beyond the wall footprint, used
+// to turn a floor plan's wall envelope into a rough roof-area estimate. Roof
+// pitch and rafter length aren't visible on a floor plan at all (that's a
+// section/elevation concept), so sheet length still needs the reviewer's
+// input; this only estimates plan-view area.
+export const STANDARD_ROOF_OVERHANG_M = 0.45;
+
+// Common stocked long-span/aluminium roofing sheet length in Nigeria, used as
+// an editable default when the real rafter length isn't known yet.
+export const STANDARD_ROOF_SHEET_LENGTH_M = 3.6;

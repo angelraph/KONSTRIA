@@ -6,7 +6,11 @@ import { requireProjectAccess } from "../../../../lib/requireProjectAccess.js";
 import { getOrCreateTakeoffModel } from "../../../../lib/getOrCreateTakeoffModel.js";
 import { uploadPlanImage } from "../../../../lib/blob/uploadPlan.js";
 import { extractPlan } from "../../../../lib/extraction/openaiExtract.js";
-import { STANDARD_OPENING_HEIGHT_M } from "@konstria/rules-engine";
+import {
+  STANDARD_OPENING_HEIGHT_M,
+  STANDARD_ROOF_OVERHANG_M,
+  STANDARD_ROOF_SHEET_LENGTH_M,
+} from "@konstria/rules-engine";
 
 export interface ExtractionDraftWall {
   tempId: string;
@@ -35,6 +39,7 @@ export interface ExtractionDraft {
   openings: ExtractionDraftOpening[];
   dimensionTexts: string[];
   extractionNotes: string;
+  suggestedRoofAreaM2: number;
 }
 
 /**
@@ -91,9 +96,21 @@ export async function extractFromUpload(projectId: string, formData: FormData): 
     },
   });
 
+  const wallXs = extraction.walls.flatMap((w) => [w.startXPx, w.endXPx]);
+  const wallYs = extraction.walls.flatMap((w) => [w.startYPx, w.endYPx]);
+  let suggestedRoofAreaM2 = 0;
+  if (wallXs.length > 0) {
+    const footprintWidthM = (Math.max(...wallXs) - Math.min(...wallXs)) / pxPerMetre;
+    const footprintDepthM = (Math.max(...wallYs) - Math.min(...wallYs)) / pxPerMetre;
+    const roofAreaM2 =
+      (footprintWidthM + 2 * STANDARD_ROOF_OVERHANG_M) * (footprintDepthM + 2 * STANDARD_ROOF_OVERHANG_M);
+    suggestedRoofAreaM2 = Number.isFinite(roofAreaM2) ? Number(roofAreaM2.toFixed(1)) : 0;
+  }
+
   return {
     extractionJobId: extractionJob.id,
     pxPerMetre,
+    suggestedRoofAreaM2,
     walls: extraction.walls.map((w) => ({
       tempId: w.tempId,
       lengthM: Number(
@@ -146,11 +163,21 @@ export interface ReviewedOpening {
   quantity: number;
 }
 
+export interface ReviewedRoof {
+  areaM2: number;
+  sheetType: "LONG_SPAN_ALUMINIUM" | "CORRUGATED_STANDARD";
+  sheetLengthM: number;
+}
+
 /**
  * Materializes the user-reviewed (and possibly corrected) extraction into
  * real Level/Wall/Room/Opening rows on the project's takeoff model, then
  * marks the takeoff REVIEWED — this is the same status gate manual entry
  * uses, so BOQ generation treats both input paths identically from here on.
+ * Foundation concrete volumes and reinforcement schedules are deliberately
+ * never auto-populated here: they depend on structural/foundation drawings
+ * and load calculations a floor plan doesn't contain, and guessing them
+ * would be an actual safety risk, not just an imprecise estimate.
  */
 export async function commitExtraction(
   projectId: string,
@@ -159,7 +186,8 @@ export async function commitExtraction(
   floorHeightM: number,
   walls: ReviewedWall[],
   rooms: ReviewedRoom[],
-  openings: ReviewedOpening[]
+  openings: ReviewedOpening[],
+  roof: ReviewedRoof | null
 ) {
   const { user } = await requireProjectAccess(projectId);
   const takeoff = await getOrCreateTakeoffModel(projectId);
@@ -212,6 +240,17 @@ export async function commitExtraction(
     }
   }
 
+  if (roof && roof.areaM2 > 0 && roof.sheetLengthM > 0) {
+    await prisma.roofPlane.create({
+      data: {
+        takeoffModelId: takeoff.id,
+        areaM2: roof.areaM2,
+        sheetType: roof.sheetType,
+        sheetLengthM: roof.sheetLengthM,
+      },
+    });
+  }
+
   await prisma.takeoffModel.update({
     where: { id: takeoff.id },
     data: { inputMethod: hadExistingLevels ? "HYBRID" : "PDF_EXTRACTED", status: "DRAFT" },
@@ -222,7 +261,7 @@ export async function commitExtraction(
     data: { status: "REVIEWED", takeoffModelId: takeoff.id },
   });
 
-  const reviewedPayload = JSON.parse(JSON.stringify({ walls, rooms, openings }));
+  const reviewedPayload = JSON.parse(JSON.stringify({ walls, rooms, openings, roof }));
   await prisma.extractionReviewLog.create({
     data: {
       extractionJobId,
