@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@konstria/db";
 import { ensureAccount } from "../../../../../lib/ensureAccount.js";
 import AppHeader from "../../../../../components/AppHeader.js";
+import { saveRatesAndRegenerate } from "./actions.js";
 
 function formatNaira(amount: number | null): string {
   if (amount === null) return "-";
@@ -33,6 +34,16 @@ export default async function BOQPage({
   const grandTotal = snapshot.lineItems.reduce((sum, item) => sum + (item.amount ?? 0), 0);
   const hasMissingPrices = snapshot.lineItems.some((item) => item.unitRateSourceType === "MISSING" && item.materialCanonicalId);
 
+  const missingMaterials = new Map<string, { name: string; unit: string }>();
+  for (const item of snapshot.lineItems) {
+    if (item.unitRateSourceType === "MISSING" && item.materialCanonical) {
+      missingMaterials.set(item.materialCanonical.id, {
+        name: item.materialCanonical.name,
+        unit: item.materialCanonical.unit,
+      });
+    }
+  }
+
   return (
     <>
       <AppHeader />
@@ -53,10 +64,41 @@ export default async function BOQPage({
         {project.region} · generated {snapshot.generatedAt.toISOString().slice(0, 10)} · rule engine {snapshot.ruleEngineVersion.versionTag}
       </p>
 
-      {hasMissingPrices && (
-        <p className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          Some materials are missing a price and need input before this BOQ can be marked final.
-        </p>
+      {hasMissingPrices && missingMaterials.size > 0 && (
+        <form
+          action={saveRatesAndRegenerate.bind(null, projectId)}
+          className="mt-4 rounded border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950"
+        >
+          <p className="text-sm text-amber-900 dark:text-amber-200">
+            {missingMaterials.size} material{missingMaterials.size > 1 ? "s" : ""} below have no
+            tracked price yet. Enter your own current rate for each and the estimate will refresh
+            with a real total. Your rate is saved and reused on future estimates too.
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {[...missingMaterials.entries()].map(([id, m]) => (
+              <label key={id} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="w-56 shrink-0">{m.name}</span>
+                <span className="text-xs text-zinc-500">₦</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name={`rate:${id}`}
+                  placeholder="0.00"
+                  className="w-32 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+                <input type="hidden" name={`unit:${id}`} value={m.unit} />
+                <span className="text-xs text-zinc-500">per {m.unit}</span>
+              </label>
+            ))}
+          </div>
+          <button
+            type="submit"
+            className="mt-4 rounded bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
+          >
+            Save rates and refresh estimate
+          </button>
+        </form>
       )}
 
       {[...byStage.entries()].map(([stage, items]) => (
