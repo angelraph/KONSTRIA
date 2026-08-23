@@ -16,7 +16,12 @@ export default async function UploadPlanPage({ params }: PageProps<"/projects/[p
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">Upload floor plan</h1>
         <p className="text-sm text-zinc-500">
-          Extract walls, rooms, and openings from a photo or scan of your drawing.
+          Extract walls, rooms, and openings from a photo or scan of your drawing. Prefer to type
+          in your own dimensions instead?{" "}
+          <Link href={`/projects/${projectId}`} className="underline">
+            Enter them manually
+          </Link>
+          .
         </p>
         <PlanUploadWizard projectId={projectId} />
       </div>

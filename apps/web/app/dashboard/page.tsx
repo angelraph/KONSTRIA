@@ -58,33 +58,43 @@ export default async function DashboardPage() {
         )}
 
         <form action={createProject} className="mt-8 flex flex-col gap-3 rounded border border-zinc-200 p-4 dark:border-zinc-800">
-          <h2 className="font-medium">New project</h2>
-          <input
-            name="name"
-            placeholder="Project name (e.g. 4-Bedroom Duplex, Lekki)"
-            required
-            className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-          <select
-            name="region"
-            required
-            defaultValue=""
-            className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          >
-            <option value="" disabled>
-              Select region
-            </option>
-            {NIGERIA_REGIONS.map((region) => (
-              <option key={region} value={region}>
-                {region}
+          <h2 className="font-medium">Start a new estimate</h2>
+          <p className="text-sm text-zinc-500">
+            Describe the building you want to estimate. You can upload a plan or enter dimensions
+            yourself on the next screen.
+          </p>
+          <label className="flex flex-col gap-1 text-xs text-zinc-500">
+            What are you building?
+            <input
+              name="name"
+              placeholder="Any building, any size: a bungalow, a block of flats, a warehouse, an office complex..."
+              required
+              className="rounded border border-zinc-300 px-3 py-2 text-base text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-zinc-500">
+            Where is it located?
+            <select
+              name="region"
+              required
+              defaultValue=""
+              className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            >
+              <option value="" disabled>
+                Select region
               </option>
-            ))}
-          </select>
+              {NIGERIA_REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="submit"
             className="self-start rounded bg-zinc-900 px-4 py-2 text-white dark:bg-zinc-100 dark:text-zinc-900"
           >
-            Create project
+            Continue
           </button>
         </form>
       </div>

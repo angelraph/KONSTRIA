@@ -22,5 +22,5 @@ export async function createProject(formData: FormData) {
     },
   });
 
-  redirect(`/projects/${project.id}`);
+  redirect(`/projects/${project.id}/upload`);
 }
